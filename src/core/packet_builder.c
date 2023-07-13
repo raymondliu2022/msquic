@@ -796,6 +796,29 @@ QuicPacketBuilderFinalize(
         // Encrypt the data.
         //
 
+        // RL
+        {
+            size_t str_len = (2 * Builder->DatagramLength) + 512; // Enough space to turn all binary data into ASCII characters
+            char *str = (char *) malloc(str_len);
+            if (str != NULL) {
+                memset(str, 0, str_len);
+                char *str_ptr = str;
+                uint16_t it;
+                str_ptr += sprintf(str_ptr, "QEO_VERIF_INPUTS DCID_LEN=%u LATEST_PN=%u QUIC_KEY=", Builder->Path->DestCid->CID.Length, Builder->Metadata->PacketNumber - 1);
+                for (it = 0; it < 32; it += 1) { str_ptr += sprintf(str_ptr, "%02x", Builder->Key->PacketKey[it]); }
+                str_ptr += sprintf(str_ptr, " QUIC_HP=");
+                for (it = 0; it < 32; it += 1) { str_ptr += sprintf(str_ptr, "%02x", Builder->Key->HeaderKey[it]); }
+                str_ptr += sprintf(str_ptr, " QUIC_IV=");
+                for (it = 0; it < 12; it += 1) { str_ptr += sprintf(str_ptr, "%02x", Builder->Key->Iv[it]); }
+                str_ptr += sprintf(str_ptr, " L234_LEN=%u PACKET_LEN=%u PACKET_DATA=", Builder->Datagram->Buffer - Header, Builder->DatagramLength);
+                for (it = 0; it < Builder->DatagramLength; it += 1) {str_ptr += sprintf(str_ptr, "%02x", Builder->Datagram->Buffer[it]); }
+                str_ptr += sprintf("\n");
+                // QUIC TRACE the cstring str, somehow.
+                free(str);
+            }
+        }
+        // RL
+
         QuicTraceEvent(
             PacketEncrypt,
             "[pack][%llu] Encrypting",
@@ -827,6 +850,22 @@ QuicPacketBuilderFinalize(
             PacketFinalize,
             "[pack][%llu] Finalizing",
             Builder->Metadata->PacketId);
+
+        // RL
+        {
+            size_t str_len = (2 * Builder->DatagramLength) + 128; // Enough space to turn all binary data into ASCII characters
+            char *str = (char *) malloc(str_len);
+            if (str != NULL) {
+                memset(str, 0, str_len);
+                char *str_ptr = str;
+                str_ptr += sprintf(str_ptr, "QEO_VERIF_OUTPUTS PACKET_DATA=");
+                for (it = 0; it < Builder->DatagramLength; it += 1) { str_ptr += sprintf(str_ptr, "%02x", Builder->Datagram->Buffer[it]); }
+                str_ptr += sprintf(str_ptr, "\n");
+                // QUIC TRACE the cstring str, somehow.
+                free(str);
+            }
+        }
+        // RL
 
         if (Connection->State.HeaderProtectionEnabled) {
 
