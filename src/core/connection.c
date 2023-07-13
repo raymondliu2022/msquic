@@ -1835,7 +1835,7 @@ QuicConnOnQuicVersionSet(
     case QUIC_VERSION_MS_1:
     case QUIC_VERSION_2:
     default:
-        Connection->State.HeaderProtectionEnabled = TRUE;
+        Connection->State.HeaderProtectionEnabled = FALSE;
         break;
     }
 }

@@ -814,6 +814,7 @@ QuicPacketBuilderFinalize(
                 for (it = 0; it < Builder->DatagramLength; it += 1) {str_ptr += sprintf(str_ptr, "%02x", Builder->Datagram->Buffer[it]); }
                 str_ptr += sprintf("\n");
                 // QUIC TRACE the cstring str, somehow.
+                QuicTraceLogVerbose(PreEncryptionPkt, "%s \n", str);
                 free(str);
             }
         }
@@ -862,6 +863,7 @@ QuicPacketBuilderFinalize(
                 for (it = 0; it < Builder->DatagramLength; it += 1) { str_ptr += sprintf(str_ptr, "%02x", Builder->Datagram->Buffer[it]); }
                 str_ptr += sprintf(str_ptr, "\n");
                 // QUIC TRACE the cstring str, somehow.
+                QuicTraceLogVerbose(PreEncryptionPkt, "%s \n", str);
                 free(str);
             }
         }
