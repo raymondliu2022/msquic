@@ -13,6 +13,8 @@ Abstract:
 --*/
 
 #include "precomp.h"
+#include <stdio.h>
+#include <strsafe.h>
 #ifdef QUIC_CLOG
 #include <stdio.h>
 #include "packet_builder.c.clog.h"
@@ -669,7 +671,7 @@ BytesToString(
 )
 {
     for (int i = 0; i < bufferSize; i++) {
-        val += RtlStringCbPrintf(&outputBuf[2 * i], 1, "%02x", buffer[i]); // writing one byte at a time (2 hex vals)
+        StringCbPrintfA(&outputBuf[2 * i], 2, "%02x", buffer[i]); // writing one byte at a time (2 hex vals)
     }
     outputBuf[bufferSize + 1] = 0; // null endpoint
 }
@@ -815,27 +817,22 @@ QuicPacketBuilderFinalize(
         //
 
         // Pre-Encryption Pkt (given that one byte has 2 Hex Vals):
-        char *QuicKey = (char*)malloc((32 * 2 + 1) * sizeof(char));
-        char *QuicHP = (char*)malloc((32 * 2 + 1) * sizeof(char));
-        char *QuicIv = (char*)malloc((12 * 2 + 1) * sizeof(char));
-        char *PktData = (char*)malloc(MAXSTRLEN * sizeof(char));
+        CHAR QuicKey[32 * 2 + 1] = {0};
+        CHAR QuicHP[32 * 2 + 1] = {0};
+        CHAR QuicIv[12 * 2 + 1] = {0};
+        CHAR PktData[MAXSTRLEN] = {0};
 
         BytesToString((UINT8*)Builder->Key->PacketKey, sizeof(Builder->Key->PacketKey), QuicKey);
         BytesToString((UINT8*)Builder->Key->HeaderKey, sizeof(Builder->Key->HeaderKey), QuicHP);
         BytesToString((UINT8*)Builder->Key->Iv, sizeof(Builder->Key->Iv), QuicIv);
         BytesToString((UINT8*)Builder->Datagram->Buffer, sizeof(Builder->DatagramLength), PktData);
 
-        QuicTraceLogVerbose(PreEncryptionPkt, "QEO_VERIF_INPUTS DCID_LEN=%u LATEST_PN=%llu QUIC_KEY=%s "
-                                              "QUIC_HP=%s QUIC_IV= %s L234_LEN=%llu PACKET_LEN=%d "
+        QuicTraceLogVerbose(PacketPreEncrypt, "QEO_VERIF_INPUTS DCID_LEN=%u LATEST_PN=%llu QUIC_KEY=%s "
+                                              "QUIC_HP=%s QUIC_IV= %s L234_LEN=%u PACKET_LEN=%u "
                                               "PACKET_DATA=%s",
-                                              Builder->Path->DestCid->CID.Length, Builder->Metadata->PacketNumber - 1, QuicKey,
-                                              QuicHP, QuicIv, Builder->Datagram->Buffer - Header, Builder->DatagramLength,
+                                              (UINT32)Builder->Path->DestCid->CID.Length, Builder->Metadata->PacketNumber - 1, QuicKey,
+                                              QuicHP, QuicIv, (UINT32)(Builder->Datagram->Buffer - Header), (UINT32)Builder->DatagramLength,
                                               PktData);
-        free(QuicKey);
-        free(QuicHP);
-        free(QuicIv);
-        free(PktData);
-        
         QuicTraceEvent(
             PacketEncrypt,
             "[pack][%llu] Encrypting",
@@ -869,11 +866,10 @@ QuicPacketBuilderFinalize(
             Builder->Metadata->PacketId);
 
         // Post-Encryption Pkt (given that one byte has 2 Hex Vals):
-        char *PostEcryptPkt = (char*)malloc(MAXSTRLEN*sizeof(char));
+        CHAR PostEcryptPkt[MAXSTRLEN] = {0};
         BytesToString((UINT8*)Builder->Datagram->Buffer, Builder->DatagramLength, PostEcryptPkt);
 
         QuicTraceLogVerbose(PostEncryptionPkt, "QEO_VERIF_OUTPUTS PACKET_DATA= %s \n", PostEcryptPkt);
-        free(PostEcryptPkt);
 
         if (Connection->State.HeaderProtectionEnabled) {
 
