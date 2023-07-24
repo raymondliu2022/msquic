@@ -30,7 +30,7 @@ QuicFuzzInjectHook(
 
 #endif
 
-#define MAXSTRLEN 1000
+#define MAX_QUIC_PKT_STR 3500
 
 _IRQL_requires_max_(PASSIVE_LEVEL)
 void
@@ -671,9 +671,9 @@ BytesToString(
 )
 {
     for (int i = 0; i < bufferSize; i++) {
-        StringCbPrintfA(&outputBuf[2 * i], 2, "%02x", buffer[i]); // writing one byte at a time (2 hex vals)
+        StringCbPrintfA(outputBuf, 2, "%02x", buffer[i]); // writing one byte at a time (2 hex vals)
+        outputBuf += 2;
     }
-    outputBuf[bufferSize + 1] = 0; // null endpoint
 }
 
 
@@ -820,17 +820,20 @@ QuicPacketBuilderFinalize(
         CHAR QuicKey[32 * 2 + 1] = {0};
         CHAR QuicHP[32 * 2 + 1] = {0};
         CHAR QuicIv[12 * 2 + 1] = {0};
-        CHAR PktData[MAXSTRLEN] = {0};
+        CHAR PktData[MAX_QUIC_PKT_STR] = {0};
 
         BytesToString((UINT8*)Builder->Key->PacketKey, sizeof(Builder->Key->PacketKey), QuicKey);
         BytesToString((UINT8*)Builder->Key->HeaderKey, sizeof(Builder->Key->HeaderKey), QuicHP);
         BytesToString((UINT8*)Builder->Key->Iv, sizeof(Builder->Key->Iv), QuicIv);
         BytesToString((UINT8*)Builder->Datagram->Buffer, sizeof(Builder->DatagramLength), PktData);
 
-        QuicTraceLogVerbose(PacketPreEncrypt, "QEO_VERIF_INPUTS DCID_LEN=%u LATEST_PN=%llu QUIC_KEY=%s "
+        // TODO: double check L234_Len + header (does pktdata have header info) 
+        // TODO: how to identify the pkt
+        QuicTraceLogVerbose(PacketPreEncrypt, "QEO_VERIF_INPUTS (ptr.:%p) DCID_LEN=%u LATEST_PN=%llu QUIC_KEY=%s "
                                               "QUIC_HP=%s QUIC_IV= %s L234_LEN=%u PACKET_LEN=%u "
                                               "PACKET_DATA=%s",
-                                              (UINT32)Builder->Path->DestCid->CID.Length, Builder->Metadata->PacketNumber - 1, QuicKey,
+                                              Builder->Datagram->Buffer, (UINT32)Builder->Path->DestCid->CID.Length, 
+                                              Builder->Metadata->PacketNumber - 1, QuicKey,
                                               QuicHP, QuicIv, (UINT32)(Builder->Datagram->Buffer - Header), (UINT32)Builder->DatagramLength,
                                               PktData);
         QuicTraceEvent(
@@ -866,10 +869,11 @@ QuicPacketBuilderFinalize(
             Builder->Metadata->PacketId);
 
         // Post-Encryption Pkt (given that one byte has 2 Hex Vals):
-        CHAR PostEcryptPkt[MAXSTRLEN] = {0};
-        BytesToString((UINT8*)Builder->Datagram->Buffer, Builder->DatagramLength, PostEcryptPkt);
+        CxPlatZeroMemory(PktData, MAX_QUIC_PKT_STR);
+        BytesToString((UINT8*)Builder->Datagram->Buffer, Builder->DatagramLength, PktData);
 
-        QuicTraceLogVerbose(PostEncryptionPkt, "QEO_VERIF_OUTPUTS PACKET_DATA= %s \n", PostEcryptPkt);
+        QuicTraceLogVerbose(PostEncryptionPkt, "QEO_VERIF_OUTPUTS (ptr.:%p) PACKET_DATA= %s \n", 
+                                                Builder->Datagram->Buffer, PktData);
 
         if (Connection->State.HeaderProtectionEnabled) {
 
