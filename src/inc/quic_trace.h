@@ -321,6 +321,7 @@ QuicEtwCallback(
 #define QuicTraceLogVerboseEnabled() EventEnabledQuicLogVerbose()
 
 #define QUIC_ETW_BUFFER_LENGTH 128
+#define QUIC_ETW_BUFFER_LENGTH_LONG 2800
 
 #define LogEtw(EventName, Fmt, ...) \
     if (EventEnabledQuicLog##EventName()) { \
@@ -336,10 +337,19 @@ QuicEtwCallback(
         EventWriteQuic##Type##Log##EventName##_AssumeEnabled(Ptr, EtwBuffer); \
     }
 
+#define LogEtw1(EventName, Fmt, ...) \
+    if (EventEnabledQuicLog##EventName()) { \
+        char EtwBuffer[QUIC_ETW_BUFFER_LENGTH_LONG]; \
+        _snprintf_s(EtwBuffer, sizeof(EtwBuffer), _TRUNCATE, Fmt, ##__VA_ARGS__); \
+        EventWriteQuicLog##EventName##_AssumeEnabled(EtwBuffer); \
+    }
+
+
 #define QuicTraceLogError(Name, Fmt, ...)               LogEtw(Error, Fmt, ##__VA_ARGS__)
 #define QuicTraceLogWarning(Name, Fmt, ...)             LogEtw(Warning, Fmt, ##__VA_ARGS__)
 #define QuicTraceLogInfo(Name, Fmt, ...)                LogEtw(Info, Fmt, ##__VA_ARGS__)
 #define QuicTraceLogVerbose(Name, Fmt, ...)             LogEtw(Verbose, Fmt, ##__VA_ARGS__)
+#define QuicTraceLogVerboseLong(Name, Fmt, ...)         LogEtwLong(Verbose, Fmt, ##__VA_ARGS__)
 
 #define QuicTraceLogConnError(Name, Ptr, Fmt, ...)      LogEtwType(Conn, Error, Ptr, Fmt, ##__VA_ARGS__)
 #define QuicTraceLogConnWarning(Name, Ptr, Fmt, ...)    LogEtwType(Conn, Warning, Ptr, Fmt, ##__VA_ARGS__)
